@@ -8,6 +8,16 @@ A lightweight, dependency-free prompt editor that generates marketing case-study
 - Or open `src/app/index.html` directly in a browser (no server needed).
 - For WordPress, copy the content of `examples/wp-embed.html` into an HTML block.
 
+## GitHub Pages (host online)
+
+- The site is mirrored to `docs/` so it can be served by GitHub Pages.
+- Steps:
+  - In GitHub: Settings → Pages → Build and deployment → Source: “Deploy from a branch”.
+  - Select Branch: `main`, Folder: `/docs`. Save.
+  - Your site will be at `https://<your-username>.github.io/marketing-quiz/`.
+- Update flow:
+  - Make changes under `src/app/` → run `make pages-sync` → commit & push.
+
 ## Project Structure
 
 - `src/app/` — self-contained HTML/CSS/JS editor.
