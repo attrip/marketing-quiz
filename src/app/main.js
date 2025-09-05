@@ -102,17 +102,15 @@
     return sanitize(s).split(/[／/、,\n]/).map(x=>x.trim()).filter(Boolean);
   }
 
-  function isPlainJapanese(text, banned){
-    const found = [];
-    // Dictionary hits
-    banned.forEach(w=>{ if(text.includes(w)) found.push(w); });
-    // ASCII words >= 3 chars (likely英語)
-    const asciiHits = (text.match(/[A-Za-z]{3,}/g)||[]).filter((v,i,a)=>a.indexOf(v)===i);
-    found.push(...asciiHits);
-    // Long Katakana tokens (横文字多用)
-    const kataHits = (text.match(/[ァ-ヴー]{6,}/g)||[]).filter((v,i,a)=>a.indexOf(v)===i);
-    found.push(...kataHits);
-    return found;
+  function findDictionaryBans(text, banned){
+    const hits = [];
+    banned.forEach(w=>{ if(w && text.includes(w)) hits.push(w); });
+    return Array.from(new Set(hits));
+  }
+  function findSuspiciousAsciiKata(text){
+    const asciiHits = (text.match(/[A-Za-z]{4,}/g)||[]).filter((v,i,a)=>a.indexOf(v)===i);
+    const kataHits = (text.match(/[ァ-ヴー]{8,}/g)||[]).filter((v,i,a)=>a.indexOf(v)===i);
+    return {ascii: asciiHits, kata: kataHits};
   }
 
   function oneSentence(s){
@@ -283,7 +281,8 @@ hintBlock,
     });
 
     // checks
-    const found = isPlainJapanese(full, banned);
+    const dictBans = findDictionaryBans(full, banned);
+    const susp = findSuspiciousAsciiKata(full);
     const okSentence = oneSentence(todo);
     const okLen = inLength20to40(todo);
     const okDontCount = splitList(dont).length <= 3;
@@ -291,10 +290,14 @@ hintBlock,
     const okProfit = hasProfitObjective(answerText) && okProfitNumbers;
 
     const msgs = [];
-    if(found.length){
-      const hints = found.map(w=> altDict[w]? `${w}→${altDict[w]}`: w);
+    if(dictBans.length){
+      const hints = dictBans.map(w=> altDict[w]? `${w}→${altDict[w]}`: w);
       msgs.push(`専門用語/横文字の疑い: ${hints.join('、')}`);
     }
+    const soft = [];
+    if(susp.ascii.length) soft.push(`英単語っぽい: ${susp.ascii.slice(0,5).join('、')}${susp.ascii.length>5?'…':''}`);
+    if(susp.kata.length) soft.push(`カタカナ長語: ${susp.kata.slice(0,5).join('、')}${susp.kata.length>5?'…':''}`);
+    if(soft.length) msgs.push(`参考: ${soft.join(' ／ ')}`);
     if(!okSentence) msgs.push("『やること』は句点を1つまでにしてください");
     if(!okLen) msgs.push("『やること』は20〜40文字で短く");
     if(!okDontCount) msgs.push("『やらないこと』は最大3つ（スラッシュ区切り）");
@@ -313,7 +316,8 @@ hintBlock,
     renderScore({distinct, promo, place, placeCount, stockout, firstpath, core, broad, todo, profitMonths, paybackMonths});
 
     // disable copy when invalid
-    const disabled = msgs.length>0;
+    const hardErrors = (!!dictBans.length) || !okSentence || !okLen || !okDontCount || !okProfitNumbers || !okProfit;
+    const disabled = hardErrors;
     $("copy-md").disabled = disabled;
     $("copy-txt").disabled = disabled;
     $("download-md").disabled = disabled;
@@ -661,7 +665,7 @@ hintBlock,
   // Evaluation mode: paste answer and score
   function evalFromText(text){
     const t = text || '';
-    const banFound = isPlainJapanese(t, defaultBan);
+    const banFound = findDictionaryBans(t, defaultBan);
 
     // extract sections by simple regex
     const getAfter = (label)=>{
