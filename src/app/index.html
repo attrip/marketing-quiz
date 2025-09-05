@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>マーケ戦略ケーススタディ・プロンプトエディター</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="wrap">
+    <h1>マーケ戦略ケーススタディ・プロンプトエディター <span class="pill">採点モード搭載</span></h1>
+
+    <form id="editor" class="grid" aria-label="プロンプトエディター">
+      <div class="card row" style="justify-content:space-between;align-items:center">
+        <div class="row">
+          <label for="preset">プリセット</label>
+          <select id="preset" name="preset">
+            <option value="">選択なし</option>
+            <option value="retail">小売</option>
+            <option value="hospitality">宿泊</option>
+            <option value="subscription">サブスク</option>
+            <option value="food">飲食</option>
+          </select>
+          <button type="button" class="btn sec" id="apply-preset">適用</button>
+        </div>
+        <div class="row">
+          <div class="seg" role="group" aria-label="ビュー切替">
+            <button type="button" id="toggle-redline" aria-pressed="false">赤入れ</button>
+            <button type="button" id="replace-jargon">置換</button>
+            <button type="button" id="toggle-dark" aria-pressed="false">ダーク</button>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <label for="theme">【テーマ】例: アレルギー対応の高級ジェラート専門店</label>
+        <input id="theme" name="theme" placeholder="ここにビジネステーマ" />
+
+        <div class="grid g2 mt8">
+          <div>
+            <label for="situation">主要な状況（市場の現状・前提）</label>
+            <textarea id="situation" name="situation" placeholder="例: 近隣に有名店が多い／観光客と地元客が混在。冷凍配送が一般化"></textarea>
+          </div>
+          <div>
+            <label for="problem">解くべき課題（勝ち筋を作る壁）</label>
+            <textarea id="problem" name="problem" placeholder="例: 初めての人に思い出してもらうきっかけが弱い／買える場所が限られている"></textarea>
+          </div>
+        </div>
+
+        <div class="grid g2 mt8">
+          <div>
+            <label for="profit_months">条件（黒字化・回収の制約）</label>
+            <div class="grid g2">
+              <div>
+                <label for="profit_months">月次黒字までの月数</label>
+                <input id="profit_months" name="profit_months" type="number" min="1" step="1" placeholder="例: 6" />
+              </div>
+              <div>
+                <label for="payback_months">投資回収までの月数</label>
+                <input id="payback_months" name="payback_months" type="number" min="1" step="1" placeholder="例: 18" />
+              </div>
+            </div>
+          </div>
+          <div>
+            <label for="distinct">ブランドらしさ（色/ロゴ/一言）※平易な言葉のみ</label>
+            <textarea id="distinct" name="distinct" placeholder="例: 深いボルドー、手書き風ロゴ、合言葉は『やさしい贅沢』"></textarea>
+          </div>
+        </div>
+
+        <div class="grid g2 mt8">
+          <div>
+            <label for="core">まず狙う人（コア）</label>
+            <textarea id="core" name="core" placeholder="例: 子どもに安心な素材を選びたい30代親層（週末おでかけ好き）"></textarea>
+          </div>
+          <div>
+            <label for="broad">買いうる人すべて（広い対象）</label>
+            <textarea id="broad" name="broad" placeholder="例: ご褒美スイーツを探す甘党全般（観光客・地元客・贈答）"></textarea>
+          </div>
+        </div>
+
+        <div class="grid g2 mt8">
+          <div>
+            <label for="todo">やること（1文・平易・20〜40文字）</label>
+            <input id="todo" name="todo" placeholder="例: 週末の初来店を増やす導線に全力を注ぐ" />
+            <div class="tiny" id="todo_count" aria-live="polite"></div>
+          </div>
+          <div>
+            <label for="dont">やらないこと（最大3つ／スラッシュ区切り）</label>
+            <input id="dont" name="dont" placeholder="例: 大型タイアップ／高額な設備拡張／複雑な限定メニュー" />
+          </div>
+        </div>
+
+        <div class="grid g2 mt8">
+          <div>
+            <label for="p_product">Product（製品/サービス）</label>
+            <textarea id="p_product" name="p_product" placeholder="例: 定番メニューは通年固定／アレルギー表示を大きく明記"></textarea>
+          </div>
+          <div>
+            <label for="p_price">Price（価格）</label>
+            <textarea id="p_price" name="p_price" placeholder="例: 店内は中価格、セット割／贈答は少し高めで箱代込み"></textarea>
+          </div>
+        </div>
+
+        <div class="grid g2 mt8">
+          <div>
+            <label for="p_place">Place（売り場所/買いやすさ）</label>
+            <textarea id="p_place" name="p_place" placeholder="例: 駅近のポップアップ出店／ECはワンクリックで定番セット"></textarea>
+            <div class="grid g3 mt8">
+              <div>
+                <label for="p_place_count">買える場所数</label>
+                <input id="p_place_count" name="p_place_count" type="number" min="0" step="1" placeholder="例: 5" />
+              </div>
+              <div>
+                <label for="p_stockout">在庫切れ率（%）</label>
+                <input id="p_stockout" name="p_stockout" type="number" min="0" max="100" step="1" placeholder="例: 5" />
+              </div>
+              <div class="row" style="align-items:center;gap:12px">
+                <label for="p_firstpath">初回導線</label>
+                <label class="switch"><input id="p_firstpath" name="p_firstpath" type="checkbox" /><span class="slider"></span></label>
+              </div>
+            </div>
+          </div>
+          <div>
+            <label for="p_promo">Promotion（宣伝/販促）</label>
+            <textarea id="p_promo" name="p_promo" placeholder="例: 週末朝に地元でサンプリング／看板と色を統一"></textarea>
+          </div>
+        </div>
+
+        <div class="grid g2 mt8">
+          <div>
+            <label for="extra_ban">追加の禁止ワード（カンマ区切り）</label>
+            <input id="extra_ban" name="extra_ban" placeholder="例: ROI, ROAS, CRM" />
+          </div>
+          <div class="row aend actionbar">
+            <button class="btn" id="generate" type="submit">生成する</button>
+            <button class="btn sec" id="auto-improve" type="button">自動改善×10</button>
+            <button class="btn sec" id="copy-md" type="button">Markdownとしてコピー</button>
+            <button class="btn ok" id="copy-txt" type="button">テキストとしてコピー</button>
+          </div>
+        </div>
+        <div class="tiny mt8 alert" id="checks" role="alert" aria-live="assertive"></div>
+      </div>
+
+      <div class="card">
+        <div class="row"><strong>出力</strong><span class="pill">読み取り専用</span></div>
+        <pre class="mono" id="output"></pre>
+        <pre class="mono" id="output_redline" hidden></pre>
+        <div class="score" id="score"></div>
+        <div class="row mt8">
+          <button class="btn sec" id="download-md" type="button">.md ダウンロード</button>
+          <button class="btn sec" id="download-txt" type="button">.txt ダウンロード</button>
+        </div>
+      </div>
+
+      <div class="card" id="drill_card">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <strong>弱点ドリル</strong>
+          <span class="tiny">点の低い観点だけ出ます</span>
+        </div>
+        <div id="drill"></div>
+        <pre class="mono mt8" id="improve_log"></pre>
+      </div>
+
+      <div class="card" id="ue_card">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <strong>収支ミニシミュレーター</strong>
+          <span class="tiny">単価×人数−固定費→損益/回収月</span>
+        </div>
+        <div class="grid g3 mt8">
+          <div>
+            <label for="ue_price">客単価（円）</label>
+            <input id="ue_price" type="number" min="0" step="100" placeholder="例: 1200" />
+          </div>
+          <div>
+            <label for="ue_customers">月来店数（人）</label>
+            <input id="ue_customers" type="number" min="0" step="10" placeholder="例: 800" />
+          </div>
+          <div>
+            <label for="ue_fixed">固定費（円/月）</label>
+            <input id="ue_fixed" type="number" min="0" step="10000" placeholder="例: 1200000" />
+          </div>
+        </div>
+        <div class="grid g3 mt8">
+          <div>
+            <label for="ue_cogs">原価率（%）</label>
+            <input id="ue_cogs" type="number" min="0" max="100" step="1" placeholder="例: 35" />
+          </div>
+          <div>
+            <label for="ue_capex">初期投資（円）</label>
+            <input id="ue_capex" type="number" min="0" step="100000" placeholder="例: 8000000" />
+          </div>
+          <div class="row aend" style="align-items:end">
+            <button class="btn sec" id="ue_calc" type="button">計算</button>
+            <button class="btn ok" id="ue_apply" type="button">Objectiveへ反映</button>
+          </div>
+        </div>
+        <pre class="mono mt8" id="ue_output"></pre>
+      </div>
+
+      <div class="card" id="variants_card">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <strong>3案自動展開（守／標準／攻）</strong>
+          <button class="btn sec" id="gen_variants" type="button">3案を生成</button>
+        </div>
+        <div class="grid g2 mt8">
+          <div>
+            <pre class="mono" id="variant_def"></pre>
+          </div>
+          <div>
+            <div class="row" style="gap:6px">
+              <button class="btn sec" id="copy_def" type="button">守をコピー</button>
+              <button class="btn sec" id="copy_std" type="button">標準をコピー</button>
+              <button class="btn sec" id="copy_att" type="button">攻をコピー</button>
+              <button class="btn sec" id="download_variants" type="button">3案をDL</button>
+            </div>
+            <pre class="mono mt8" id="variant_std"></pre>
+            <pre class="mono mt8" id="variant_att"></pre>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <strong>おもしろスイッチ</strong>
+          <div class="row">
+            <button type="button" class="btn sec" id="spark">ひらめきカード</button>
+            <button type="button" class="btn sec" id="dice">サイコロ制約</button>
+            <button type="button" class="btn sec" id="suggest">テーマ拡張</button>
+          </div>
+        </div>
+        <div class="tiny" id="spark_text"></div>
+        <div class="row mt8 chips" id="suggestions"></div>
+        <div id="confetti"></div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <strong>生成プロンプト（AI向け）</strong>
+          <div class="row" style="align-items:center;gap:12px">
+            <label for="ask_theme">テーマは相手に質問する</label>
+            <label class="switch"><input id="ask_theme" type="checkbox" checked /><span class="slider"></span></label>
+          </div>
+        </div>
+        <pre class="mono" id="meta_prompt"></pre>
+        <div class="row mt8 aend">
+          <button class="btn sec" id="copy-prompt" type="button">プロンプトをコピー</button>
+          <button class="btn sec" id="download-prompt" type="button">プロンプトをダウンロード</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <strong>評価モード（貼り付け評価）</strong>
+          <span class="tiny">あなたが書いた【解答例】を貼って採点</span>
+        </div>
+        <label for="eval_text">評価対象テキスト</label>
+        <textarea id="eval_text" placeholder="ここにあなたの【解答例】を貼り付け"></textarea>
+        <div class="row aend mt8">
+          <button class="btn" id="evaluate" type="button">評価する</button>
+          <button class="btn sec" id="download-eval" type="button">結果JSON</button>
+        </div>
+        <pre class="mono mt8" id="eval_result"></pre>
+      </div>
+    </form>
+  </div>
+
+  <script src="main.js"></script>
+  <noscript>JavaScriptを有効にしてください。</noscript>
+</body>
+</html>

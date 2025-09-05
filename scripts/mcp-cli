@@ -1,0 +1,168 @@
+#!/usr/bin/env python3
+"""
+Minimal CLI to interact with the MCP-style demo server.
+
+Usage:
+  - Interactive:  python3 scripts/mcp-cli
+  - One-shot:     python3 scripts/mcp-cli --method tools/list
+                  python3 scripts/mcp-cli --method tools/call --params '{"name":"echo","arguments":{"text":"hi"}}'
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any, Dict
+
+
+def os_environ_with_src() -> Dict[str, str]:
+    import os
+
+    env = os.environ.copy()
+    src = str(Path(__file__).resolve().parents[1] / "src")
+    env["PYTHONPATH"] = src + (":" + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+    return env
+
+
+def start_server() -> subprocess.Popen:
+    cmd = [sys.executable, "-u", "-m", "mcp_demo.server"]
+    return subprocess.Popen(
+        cmd,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=os_environ_with_src(),
+    )
+
+
+def send(proc: subprocess.Popen, payload: Dict[str, Any]) -> Dict[str, Any]:
+    line = json.dumps(payload) + "\n"
+    assert proc.stdin is not None
+    proc.stdin.write(line.encode("utf-8"))
+    proc.stdin.flush()
+    assert proc.stdout is not None
+    out = proc.stdout.readline().decode("utf-8").strip()
+    return json.loads(out)
+
+
+def initialize(proc: subprocess.Popen, id_counter: int) -> int:
+    res = send(proc, {"jsonrpc": "2.0", "id": id_counter, "method": "initialize"})
+    print(json.dumps(res, ensure_ascii=False))
+    return id_counter + 1
+
+
+def shutdown(proc: subprocess.Popen, id_counter: int) -> int:
+    res = send(proc, {"jsonrpc": "2.0", "id": id_counter, "method": "shutdown"})
+    print(json.dumps(res, ensure_ascii=False))
+    return id_counter + 1
+
+
+def interactive(proc: subprocess.Popen) -> int:
+    print("MCP demo CLI. Type 'help' for commands.")
+    idc = 1
+    idc = initialize(proc, idc)
+    while True:
+        try:
+            cmdline = input("mcp> ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print()
+            break
+        if not cmdline:
+            continue
+        if cmdline in {"quit", "exit"}:
+            break
+        if cmdline in {"help", "h", "?"}:
+            print(
+                "commands: list | call <name> <json-args> | init | shutdown | help | exit"
+            )
+            continue
+        if cmdline == "init":
+            idc = initialize(proc, idc)
+            continue
+        if cmdline == "list":
+            res = send(proc, {"jsonrpc": "2.0", "id": idc, "method": "tools/list"})
+            print(json.dumps(res, ensure_ascii=False))
+            idc += 1
+            continue
+        if cmdline.startswith("call "):
+            parts = cmdline.split(" ", 2)
+            if len(parts) < 2:
+                print("usage: call <name> <json-args>")
+                continue
+            name = parts[1]
+            args_json = parts[2] if len(parts) >= 3 else "{}"
+            try:
+                args = json.loads(args_json) if args_json else {}
+                if not isinstance(args, dict):
+                    raise ValueError("arguments must be a JSON object")
+            except Exception as e:
+                print(f"invalid JSON: {e}")
+                continue
+            payload = {
+                "jsonrpc": "2.0",
+                "id": idc,
+                "method": "tools/call",
+                "params": {"name": name, "arguments": args},
+            }
+            res = send(proc, payload)
+            print(json.dumps(res, ensure_ascii=False))
+            idc += 1
+            continue
+        if cmdline == "shutdown":
+            idc = shutdown(proc, idc)
+            continue
+        print("unknown command; type 'help'")
+    try:
+        idc = shutdown(proc, idc)
+    except Exception:
+        pass
+    return 0
+
+
+def one_shot(proc: subprocess.Popen, method: str, params: str | None) -> int:
+    idc = 1
+    idc = initialize(proc, idc)
+    payload = {"jsonrpc": "2.0", "id": idc, "method": method}
+    if params:
+        try:
+            p = json.loads(params)
+        except Exception as e:
+            print(f"invalid --params JSON: {e}", file=sys.stderr)
+            return 2
+        payload["params"] = p
+    res = send(proc, payload)
+    print(json.dumps(res, ensure_ascii=False))
+    _ = shutdown(proc, idc + 1)
+    return 0
+
+
+def main(argv=None) -> int:
+    parser = argparse.ArgumentParser(description="MCP demo CLI")
+    parser.add_argument("--method", help="Call a single method and exit")
+    parser.add_argument("--params", help="JSON string for method params")
+    args = parser.parse_args(argv)
+
+    proc = start_server()
+    try:
+        if args.method:
+            return one_shot(proc, args.method, args.params)
+        return interactive(proc)
+    finally:
+        # Graceful shutdown
+        if proc.stdin:
+            try:
+                proc.stdin.close()
+            except Exception:
+                pass
+        try:
+            proc.wait(timeout=2)
+        except Exception:
+            pass
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+
