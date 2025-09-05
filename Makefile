@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-.PHONY: build dev preview test lint fmt clean
+.PHONY: build dev preview pages-sync test lint fmt clean
 
 build:
 	@mkdir -p dist
@@ -24,3 +24,7 @@ fmt:
 
 clean:
 	rm -rf dist
+
+pages-sync:
+	@rsync -a src/app/ docs/
+	@echo "Synced src/app -> docs/ for GitHub Pages (set Pages source to 'main /docs')."
