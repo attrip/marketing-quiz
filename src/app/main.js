@@ -5,6 +5,16 @@
   const scoreBox = $("score");
   const outRed = $("output_redline");
 
+  // Configuration
+  const CFG = Object.freeze({
+    TODO_MIN: 20,
+    TODO_MAX: 40,
+    EASE_MIN_PLACES: 3,
+    EASE_MAX_STOCKOUT: 10,
+    SCORE_TARGET: 8,
+    STORAGE_VERSION: 2
+  });
+
   const defaultBan = [
     "ペネトレーション","アベイラビリティ","UGC","プレファレンス","CEP",
     "リテンション","ファネル","アトリビューション","LTV","CPA","CPC",
@@ -122,7 +132,7 @@
 
   function inLength20to40(s){
     const len = sanitize(s).length;
-    return len>=20 && len<=40;
+    return len>=CFG.TODO_MIN && len<=CFG.TODO_MAX;
   }
 
   function hasProfitObjective(text){
@@ -299,14 +309,18 @@ hintBlock,
     if(susp.kata.length) soft.push(`カタカナ長語: ${susp.kata.slice(0,5).join('、')}${susp.kata.length>5?'…':''}`);
     if(soft.length) msgs.push(`参考: ${soft.join(' ／ ')}`);
     if(!okSentence) msgs.push("『やること』は句点を1つまでにしてください");
-    if(!okLen) msgs.push("『やること』は20〜40文字で短く");
+    if(!okLen) msgs.push(`『やること』は${CFG.TODO_MIN}〜${CFG.TODO_MAX}文字で短く`);
     if(!okDontCount) msgs.push("『やらないこと』は最大3つ（スラッシュ区切り）");
     if(!okProfitNumbers) msgs.push("黒字と回収の月数を入力してください");
     if(!okProfit) msgs.push("Objectiveに黒字または回収の表現を含めてください");
     const holes = requiredHoles({theme, core, broad, todo, product, price, place, promo, profitMonths, paybackMonths});
     highlightHoles(holes);
     const holeMsg = holes.length? `穴: ${holes.join('、')}` : "";
-    checks.textContent = msgs.length || holes.length ? `⚠️ チェック: ${[...msgs, holeMsg].filter(Boolean).join(' ／ ')}` : "✅ チェックOK";
+    const hardErrors = (!!dictBans.length) || !okSentence || !okLen || !okDontCount || !okProfitNumbers || !okProfit;
+    const statusCls = hardErrors ? 'status-err' : (msgs.length||holes.length ? 'status-warn' : 'status-ok');
+    checks.classList.remove('status-err','status-warn','status-ok');
+    checks.classList.add(statusCls);
+    checks.textContent = msgs.length || holes.length ? `${hardErrors?'⛔':''}チェック: ${[...msgs, holeMsg].filter(Boolean).join(' ／ ')}` : "✅ チェックOK";
 
     out.textContent = full;
     $("meta_prompt").textContent = meta;
@@ -316,14 +330,45 @@ hintBlock,
     renderScore({distinct, promo, place, placeCount, stockout, firstpath, core, broad, todo, profitMonths, paybackMonths});
 
     // disable copy when invalid
-    const hardErrors = (!!dictBans.length) || !okSentence || !okLen || !okDontCount || !okProfitNumbers || !okProfit;
     const disabled = hardErrors;
     $("copy-md").disabled = disabled;
     $("copy-txt").disabled = disabled;
     $("download-md").disabled = disabled;
     $("download-txt").disabled = disabled;
 
+    // Mark invalid fields and focus the first error
+    markValidity({
+      todo: okSentence && okLen,
+      dont: okDontCount,
+      profit_months: Number.isFinite(profitMonths),
+      payback_months: Number.isFinite(paybackMonths)
+    });
+    if(hardErrors){
+      focusFirstError(dictBans, {
+        todo: okSentence && okLen,
+        dont: okDontCount,
+        profit_months: Number.isFinite(profitMonths),
+        payback_months: Number.isFinite(paybackMonths)
+      }, holes);
+    }
+
     return {problemText, full, meta};
+  }
+
+  function markValidity(flags){
+    Object.keys(flags).forEach(id=>{
+      const el = $(id); if(!el) return;
+      el.setAttribute('aria-invalid', flags[id] ? 'false' : 'true');
+    });
+  }
+  function focusFirstError(dictBans, flags, holes){
+    const order = ['todo','dont','profit_months','payback_months'];
+    for(const id of order){ if(flags[id]===false){ const el=$(id); if(el){ el.focus(); return; } } }
+    if(holes && holes.length){
+      const map = {'テーマ':'theme','黒字までの月数':'profit_months','回収までの月数':'payback_months','コア':'core','広い対象':'broad','やること':'todo','Product':'p_product','Price':'p_price','Place':'p_place','Promotion':'p_promo'};
+      const id = map[holes[0]]; const el=$(id); if(el){ el.focus(); return; }
+    }
+    if(dictBans && dictBans.length){ const el=$("p_promo"); if(el) el.focus(); }
   }
 
   // scoring (0-2 each): recall, ease, consistency, spread, profit
@@ -338,7 +383,7 @@ hintBlock,
     const pc = parseInt(ctx.placeCount||"0");
     const so = parseInt(ctx.stockout||"100");
     const fp = !!ctx.firstpath;
-    let ease=0; if(pc>=3) ease++; if(so<=10) ease++; if(fp) ease=Math.min(2, ease+1); scores.ease = Math.min(2,ease);
+    let ease=0; if(pc>=CFG.EASE_MIN_PLACES) ease++; if(so<=CFG.EASE_MAX_STOCKOUT) ease++; if(fp) ease=Math.min(2, ease+1); scores.ease = Math.min(2,ease);
     // consistency (ブランドの一貫性): distinct referenced in product/promo/place
     const d = sanitize(ctx.distinct);
     const consistencyRefs = [sanitize(ctx.place), sanitize(ctx.promo)].filter(t=>d && t.includes(d.split(/[、,\s]/)[0]||""));
@@ -359,7 +404,7 @@ hintBlock,
     const advice = adviceLine(scores);
     const badge = badgeFor(scores);
     scoreBox.textContent = `${radar}\n称号: ${badge} ／ 弱点: ${advice}`;
-    if(total>=8){ confettiBurst(); }
+    if(total>=CFG.SCORE_TARGET){ confettiBurst(); }
     // render drill after scoring
     renderDrill(scores, ctx);
   }
@@ -374,7 +419,7 @@ hintBlock,
     const pc = parseInt(ctx.placeCount||"0");
     const so = parseInt(ctx.stockout||"100");
     const fp = !!ctx.firstpath;
-    let ease=0; if(pc>=3) ease++; if(so<=10) ease++; if(fp) ease=Math.min(2, ease+1); scores.ease = Math.min(2,ease);
+    let ease=0; if(pc>=CFG.EASE_MIN_PLACES) ease++; if(so<=CFG.EASE_MAX_STOCKOUT) ease++; if(fp) ease=Math.min(2, ease+1); scores.ease = Math.min(2,ease);
     const d = sanitize(ctx.distinct);
     const consistencyRefs = [sanitize(ctx.place), sanitize(ctx.promo)].filter(t=>d && t.includes(d.split(/[、,\s]/)[0]||""));
     scores.consistency = Math.min(2, (hasDistinct?1:0) + (consistencyRefs.length?1:0));
@@ -458,7 +503,7 @@ hintBlock,
       const {changed, total} = autoImproveOnce(log);
       log.push(`第${i}回: 合計=${total}/10`);
       $("improve_log").textContent = log.join('\n');
-      if(total>=8) { log.push('目標点に到達'); break; }
+      if(total>=CFG.SCORE_TARGET) { log.push('目標点に到達'); break; }
       if(!changed){ log.push('変更余地なし'); break; }
       await new Promise(r=>setTimeout(r, 120));
     }
@@ -597,7 +642,7 @@ hintBlock,
   const form = $("editor");
   const storageKey = "prompt-editor-v1";
   function save(){
-    const data = {};
+    const data = {_v: CFG.STORAGE_VERSION};
     Array.from(form.elements).forEach(el=>{
       if(!el.name) return;
       if(el.type==="checkbox") data[el.name]=el.checked; else data[el.name]=el.value;
@@ -609,6 +654,12 @@ hintBlock,
       const raw = localStorage.getItem(storageKey);
       if(!raw) return;
       const data = JSON.parse(raw);
+      // migrate if needed
+      if(!data._v){ data._v = 1; }
+      if(data._v < CFG.STORAGE_VERSION){
+        // placeholder for future migrations
+        data._v = CFG.STORAGE_VERSION;
+      }
       Object.keys(data).forEach(k=>{
         const el = form.elements.namedItem(k);
         if(!el) return;
