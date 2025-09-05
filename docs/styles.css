@@ -35,6 +35,9 @@ textarea{min-height:88px}
 .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#f1f5f9;color:#0f172a;font-size:12px;margin-left:6px}
 .mt8{margin-top:8px}
 .alert{color:#b91c1c}
+.status-ok{color:#16a34a}
+.status-warn{color:#ca8a04}
+.status-err{color:#b91c1c}
 .actionbar{position:sticky;bottom:0;background:var(--card);padding:8px;border-top:1px solid var(--hair)}
 .score{margin-top:8px;border-top:1px dashed #e5e7eb;padding-top:8px;color:#0f172a;font-size:13px}
 .missing{outline:2px solid #fbbf24; background: #fff7ed}
