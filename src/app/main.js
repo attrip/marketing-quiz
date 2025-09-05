@@ -253,6 +253,44 @@ hintBlock,
     ].filter(Boolean).join('\n');
   }
 
+  function buildQuickMeta(oneLine){
+    const t = sanitize(oneLine)||'（未設定）';
+    const banned = defaultBan;
+    const banLine = banned.join('、 ');
+    return [
+`あなたは、マーケティング戦略の思考トレーニングを支援するアシスタントです。次の一行をテーマとして使い、ケーススタディ（問題と解答のセット）を1つ作成してください。`,
+`テーマ: 「${t}」`,
+"",
+"絶対に守るべき条件:",
+"1) 平易な言葉だけを使い、専門用語は一切使わない。",
+`   禁止例: ${banLine} など（日常語に言い換える）。`,
+"2) 思考の要点を取り入れる（理論名は出さない）:",
+"   - ふとした時に思い出してもらえる工夫",
+"   - 欲しい時にすぐ買えるようにする工夫",
+"   - 見た目や言葉の一貫性",
+"   - 新しいお客さんを増やし続ける視点",
+"3) 事業の現実性: 黒字化や投資回収を必ず目的に入れる。",
+"",
+"アウトプットの形式（この通りに出力）:",
+"### 【問題】",
+"（状況設定・課題・条件を自然なストーリーで）",
+"",
+"### 【解答例】",
+"#### Objective（目的）",
+"#### 対象 (Who)",
+"* **コアターゲット（マーケティング資産を集中させるターゲット）:**",
+"* **戦略ターゲット（買いうる人すべて）:**",
+"#### 戦略 (What・リソース配分の選択)",
+"* **やること:**（1文・短く）",
+"* **やらないこと（リソースを割かないこと）:**（最大3項目）",
+"#### How（戦術）",
+"* **Product (製品/サービス):**",
+"* **Price (価格):**",
+"* **Place (売り場所/買いやすさ):**",
+"* **Promotion (宣伝/販促):**"
+    ].join('\n');
+  }
+
   function generate(){
     const theme = $("theme").value;
     const situation = $("situation").value;
@@ -457,8 +495,8 @@ hintBlock,
     let changed = false;
     const ctx = getCtx();
     const {scores, total} = computeScores(ctx);
-    // 1) fix NG words
-    const found = isPlainJapanese([ctx.place, ctx.promo, ctx.todo, ctx.core, ctx.broad].join('\n'), defaultBan);
+    // 1) fix NG words (dictionary-based)
+    const found = findDictionaryBans([ctx.place, ctx.promo, ctx.todo, ctx.core, ctx.broad].join('\n'), defaultBan);
     for(const w of found){ if(altDict[w]){ replaceWordInAllInputs(w, altDict[w]); log.push(`置換: ${w}→${altDict[w]}`); changed = true; } }
     // Re-read ctx
     const ctx2 = getCtx();
@@ -561,7 +599,7 @@ hintBlock,
     const wrap = $("drill"); if(!wrap) return;
     wrap.innerHTML = '';
     // Coaching: jargon replacements
-    const found = isPlainJapanese([ctx.place, ctx.promo, ctx.todo, ctx.core, ctx.broad].join('\n'), defaultBan);
+    const found = findDictionaryBans([ctx.place, ctx.promo, ctx.todo, ctx.core, ctx.broad].join('\n'), defaultBan);
     if(found.length){
       const block = document.createElement('div');
       block.innerHTML = `<div class=tiny>言い換え提案（横文字→日常語）</div>`;
@@ -712,6 +750,16 @@ hintBlock,
   $("download-md").addEventListener("click", ()=>{ const {full}=generate(); download('case-study.md', full); });
   $("download-txt").addEventListener("click", ()=>{ const {full}=generate(); download('case-study.txt', toPlain(full)); });
   $("download-prompt").addEventListener("click", ()=>{ const {meta}=generate(); download('prompt.txt', meta); });
+  // Quick one-line prompt maker
+  $("quick_make").addEventListener('click', ()=>{
+    const line = $("quick_input").value;
+    const text = buildQuickMeta(line);
+    $("quick_meta").textContent = text;
+  });
+  $("quick_copy").addEventListener('click', ()=>{
+    const text = $("quick_meta").textContent || buildQuickMeta($("quick_input").value);
+    navigator.clipboard.writeText(text);
+  });
 
   // Evaluation mode: paste answer and score
   function evalFromText(text){

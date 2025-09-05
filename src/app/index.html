@@ -141,6 +141,24 @@
       </div>
 
       <div class="card">
+        <div class="row" style="justify-content:space-between;align-items:center">
+          <strong>1行からプロンプト生成</strong>
+          <span class="tiny">なにか1つ入れたら即プロンプト</span>
+        </div>
+        <div class="grid g2 mt8">
+          <div>
+            <label for="quick_input">お題（1行）</label>
+            <input id="quick_input" placeholder="例: 駅ナカの夜限定ベーカリー" />
+          </div>
+          <div class="row aend" style="align-items:end">
+            <button class="btn" id="quick_make" type="button">プロンプト作成</button>
+            <button class="btn sec" id="quick_copy" type="button">コピー</button>
+          </div>
+        </div>
+        <pre class="mono mt8" id="quick_meta"></pre>
+      </div>
+
+      <div class="card">
         <div class="row"><strong>出力</strong><span class="pill">読み取り専用</span></div>
         <pre class="mono" id="output"></pre>
         <pre class="mono" id="output_redline" hidden></pre>
